@@ -1,0 +1,1 @@
+Upload index.html to a free static host such as GitHub Pages. The public page contains only Karaoke ID and searchable song name. REQUEST opens the Google Form with Karaoke ID and Song pre-filled. Private source folders and Windows paths are not included.
