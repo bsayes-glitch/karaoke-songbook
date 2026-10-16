@@ -22,7 +22,7 @@ h1{margin:0 0 6px;font-size:30px}.sub{color:var(--muted);margin-bottom:18px}
 <div class="wrap">
 <h1>🎤 Karaoke Songbook</h1>
 <div class="sub">Search for a song, choose it, then send your request to the DJ.</div>
-<input id="q" class="search" type="search" placeholder="Search Arabic or Latin: Jabbar / جبار / artist / Karaoke ID..." autocomplete="off">
+<input id="q" class="search" type="search" placeholder="Search song, artist or Karaoke ID..." autocomplete="off">
 <div id="meta" class="meta"></div><div id="list" class="list"></div>
 <div class="note">Only songs from this catalog can be requested.</div>
 </div>
@@ -33,65 +33,17 @@ const ENTRY_ID = "entry.472181259";
 const ENTRY_SONG = "entry.1371725925";
 const q=document.getElementById("q"),list=document.getElementById("list"),meta=document.getElementById("meta");
 const LIMIT=100;
-// Cross-script phonetic search. Index only public names/aliases, never local paths.
-const AR_MAP={'ا':'a','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh','د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z','ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ء':'','ئ':'y','ؤ':'w','ة':'h','ى':'a','پ':'p','چ':'ch','گ':'g','ڤ':'v'};
-const normalizeArabic=t=>t.normalize('NFKC').replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').toLowerCase();
-const normalizeLatin=t=>t.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/sh/g,'š').replace(/ch/g,'č').replace(/kh/g,'ḵ').replace(/gh/g,'ǧ').replace(/th/g,'ṯ').replace(/dh/g,'ḏ').replace(/ph/g,'f').replace(/ou/g,'u').replace(/oo/g,'u').replace(/ee/g,'i').replace(/aa/g,'a').replace(/qu/g,'q').replace(/ck/g,'k').replace(/c/g,'k').replace(/([a-zšǧḵčṯḏ])\1+/g,'$1').replace(/[235679]/g,c=>({'2':'','3':'a','5':'ḵ','6':'t','7':'h','9':'s'}[c]));
-function phonetic(t){
- let a=normalizeArabic(t); let out='';
- for(const ch of a){out+=AR_MAP[ch]??ch;}
- return normalizeLatin(out).replace(/š/g,'s').replace(/č/g,'j').replace(/ḵ/g,'k').replace(/ǧ/g,'g').replace(/[aeiouyw]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-}
-function latinKey(t){return normalizeLatin(t).replace(/š/g,'s').replace(/č/g,'j').replace(/ḵ/g,'k').replace(/ǧ/g,'g').replace(/[aeiouyw]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
-function words(t){return t.split(/\s+/).filter(Boolean)}
-const INDEX=SONGS.map(s=>{
- const raw=[s.name,s.latin||'',s.latin2||''].join(' ');
- const normalized=normalizeArabic(raw).replace(/[^\p{L}\p{N}]+/gu,' ').trim();
- const latin=normalizeLatin(raw).replace(/[^\p{L}\p{N}]+/gu,' ').trim();
- const phon=phonetic(raw)+' '+latinKey(raw);
- return {s,normalized,latin,phonWords:words(phon),phon};
-});
-function editDistanceOne(a,b){if(Math.abs(a.length-b.length)>1)return false;let i=0,j=0,edits=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;continue;}if(++edits>1)return false;if(a.length>=b.length)i++;if(a.length<=b.length)j++;}return edits+(i<a.length||j<b.length?1:0)<=1;}
-function rank(entry,query){
- const {s,normalized,latin,phonWords,phon}=entry;
- if(s.id.toLowerCase()===query.toLowerCase())return 1000;
- const nq=normalizeArabic(query).replace(/[^\p{L}\p{N}]+/gu,' ').trim();
- const lq=normalizeLatin(query).replace(/[^\p{L}\p{N}]+/gu,' ').trim();
- if(normalizeArabic(s.name).toLowerCase()===nq)return 900;
- if(normalized.includes(nq)||latin.includes(lq))return 650;
- const firstTitle=s.name.split(/\s[-–+]\s|\s[-–+]$|\s\+\s/)[0].trim();
- const titleKeys=[phonetic(firstTitle),latinKey(firstTitle)].filter(Boolean);
- const queryKeys=[phonetic(query),latinKey(query)].filter(Boolean);
- if(queryKeys.some(k=>titleKeys.includes(k)))return 720;
- const keys=words(phonetic(query)+' '+latinKey(query));
- const unique=[...new Set(keys)].filter(x=>x.length>=2);
- if(!unique.length)return 0;
- let score=0;
- for(const key of unique){
-   if(phonWords.includes(key))score+=110;
-   else if(phonWords.some(w=>w.startsWith(key)))score+=75;
-   else if(key.length>=3&&phonWords.some(w=>w.includes(key)))score+=45;
-   else if(key.length>=4&&phonWords.some(w=>editDistanceOne(w,key)))score+=18;
-   else return 0;
- }
- return score;
-}
-function requestUrl(song){const u=new URL(FORM);u.searchParams.set('usp','pp_url');u.searchParams.set(ENTRY_ID,song.id);u.searchParams.set(ENTRY_SONG,song.name);return u.toString()}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function requestUrl(song){const u=new URL(FORM);u.searchParams.set("usp","pp_url");u.searchParams.set(ENTRY_ID,song.id);u.searchParams.set(ENTRY_SONG,song.name);return u.toString()}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function render(){
- const term=q.value.trim();let results;
+ const term=q.value.trim().toLowerCase();
+ let results;
  if(!term){results=SONGS.slice(0,LIMIT);meta.textContent=`Type to search ${SONGS.length.toLocaleString()} songs. Showing first ${results.length}.`}
- else{
-  const matches=[];
-  for(const e of INDEX){const score=rank(e,term);if(score)matches.push({s:e.s,score});}
-  matches.sort((a,b)=>b.score-a.score||a.s.id.localeCompare(b.s.id));
-  results=matches.map(x=>x.s);
-  meta.textContent=`${results.length.toLocaleString()} match${results.length===1?'':'es'}`;
- }
+ else{results=SONGS.filter(s=>s.name.toLowerCase().includes(term)||(s.latin||"").toLowerCase().includes(term)||(s.latin2||"").toLowerCase().includes(term)||s.id.toLowerCase().includes(term));meta.textContent=`${results.length.toLocaleString()} match${results.length===1?"":"es"}`}
  const visible=results.slice(0,LIMIT);
- if(!visible.length){list.innerHTML='<div class="empty">No matching song found. Try a shorter title, the artist name, or a different spelling.</div>';return}
- list.innerHTML=visible.map(s=>`<div class="item"><div><div class="name">${esc(s.name)}</div><div class="id">${esc(s.id)}</div></div><a class="btn" href="${esc(requestUrl(s))}" target="_blank" rel="noopener">REQUEST</a></div>`).join('');
- if(results.length>LIMIT)meta.textContent+=` — showing first ${LIMIT}. Refine your search.`;
+ if(!visible.length){list.innerHTML='<div class="empty">No matching song found.</div>';return}
+ list.innerHTML=visible.map(s=>`<div class="item"><div><div class="name">${esc(s.name)}</div><div class="id">${esc(s.id)}</div></div><a class="btn" href="${esc(requestUrl(s))}" target="_blank" rel="noopener">REQUEST</a></div>`).join("");
+ if(results.length>LIMIT){meta.textContent+=` — showing first ${LIMIT}. Refine your search.`}
 }
 q.addEventListener("input",render);render();
 </script>
